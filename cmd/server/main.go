@@ -15,7 +15,6 @@ import (
 
 func main() {
 	log.SetOutput(os.Stderr)
-	log.SetPrefix("[nautilus-mcp] ")
 
 	dotenv.LoadEnvVariables()
 
