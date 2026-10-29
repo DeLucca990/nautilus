@@ -235,6 +235,11 @@ func (b *Bot) runCommand(ctx context.Context, chatID, userID int64, userName str
 			b.sendHTML(ctx, chatID, "/"+cmd.name+" é só para os administradores deste bot.")
 			continue
 		}
+		if !admin && botLogs(name, args) {
+			log.Printf("%s → %s %s refused: admin only", who(r), name, botContainer)
+			b.sendHTML(ctx, chatID, "Os logs do "+botContainer+" são só para os administradores deste bot.")
+			continue
+		}
 
 		log.Printf("%s → %s", who(r), name)
 		text, isError, err := b.mcp.Call(ctx, name, args)

@@ -1,6 +1,8 @@
 package telegram
 
 import (
+	"strings"
+
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -13,6 +15,14 @@ var adminOnlyTools = map[string]bool{
 	"bazarr_providers_reset":        true,
 	"prowlarr_indexer_add":          true,
 	"prowlarr_indexer_update":       true,
+}
+
+const botContainer = "nautilus-bot"
+
+func botLogs(tool string, args map[string]any) bool {
+	container, _ := args["container"].(string)
+	return tool == "docker_container_logs" &&
+		strings.EqualFold(strings.TrimPrefix(strings.TrimSpace(container), "/"), botContainer)
 }
 
 func adminOnly(t *sdk.Tool) bool {
@@ -30,6 +40,7 @@ func adminOnly(t *sdk.Tool) bool {
 const (
 	adminMark = "Admin only: the bot refuses it unless the sender is one of its admins. "
 	adminNote = "The latest user message was sent by an admin of this bot."
-	userNote  = "The latest user message was sent by someone who is not an admin of this bot. Tools marked Admin only are refused for them: " +
+	userNote  = "The latest user message was sent by someone who is not an admin of this bot. Tools marked Admin only are refused for them, " +
+		"and so are the logs of " + botContainer + ", this bot's own container: " +
 		"do not offer or attempt those; if they ask for one, say it needs an admin."
 )

@@ -180,6 +180,35 @@ func TestAgentRefusesAdminToolForUser(t *testing.T) {
 	}
 }
 
+func TestAgentRefusesBotLogsForUser(t *testing.T) {
+	url, _ := newCommandServer(t)
+	claude := newFakeClaude(t,
+		message("tool_use", `[{"type":"tool_use","id":"tu_1","name":"docker_container_logs","input":{"container":"jellyfin"}},`+
+			`{"type":"tool_use","id":"tu_2","name":"docker_container_logs","input":{"container":"/nautilus-bot"}}]`),
+		message("end_turn", `[{"type":"text","text":"Os logs do bot precisam de um admin."}]`),
+	)
+	approvals, _ := newApprovalHarness("y", 42, time.Second)
+	m := NewMCP(url, testToken, approvals.Elicit)
+	t.Cleanup(m.Close)
+	agent := NewAgent(Config{Model: defaultModel, Effort: defaultEffort}, m,
+		option.WithBaseURL(claude.URL), option.WithAPIKey("test"), option.WithMaxRetries(0))
+
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "mostra os logs"); err != nil {
+		t.Fatal(err)
+	}
+
+	second, _ := json.Marshal(claude.requests[1]["messages"])
+	if !strings.Contains(string(second), "container=jellyfin") {
+		t.Errorf("another container's logs were refused too: %s", second)
+	}
+	if strings.Contains(string(second), "container=/nautilus-bot") {
+		t.Fatalf("a user read the bot's logs: %s", second)
+	}
+	if !strings.Contains(string(second), "docker_container_logs was not called: the logs of nautilus-bot") || !strings.Contains(string(second), `"is_error":true`) {
+		t.Errorf("the refusal did not reach Claude as an error: %s", second)
+	}
+}
+
 func TestAgentAdminRunsAdminTool(t *testing.T) {
 	mcpServer := newFakeServer(t)
 	claude := newFakeClaude(t,

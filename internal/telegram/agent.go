@@ -332,6 +332,14 @@ func (a *Agent) runTools(ctx context.Context, content []anthropic.BetaContentBlo
 			continue
 		}
 
+		if !r.admin && botLogs(use.Name, args) {
+			log.Printf("%s → %s %s refused: admin only", who(r), use.Name, botContainer)
+			results = append(results, anthropic.NewBetaToolResultBlock(use.ID,
+				use.Name+" was not called: the logs of "+botContainer+", this bot's own container, "+
+					"are admin only, and the user who asked is not an admin of this bot. Nothing was read.", true))
+			continue
+		}
+
 		var (
 			text    string
 			isError bool

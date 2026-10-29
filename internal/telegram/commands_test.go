@@ -184,6 +184,28 @@ func TestCommandPassesItsArgument(t *testing.T) {
 	}
 }
 
+func TestBotLogsCommandRefusedForUser(t *testing.T) {
+	b, api, _, _ := newCommandBot(t, "")
+
+	runCommandText(b, 42, "/logs Nautilus-Bot 50")
+	got := api.texts()
+	if strings.Contains(got, "container=Nautilus-Bot") {
+		t.Fatalf("a user read the bot's logs: %s", got)
+	}
+	if !strings.Contains(got, "Os logs do nautilus-bot são só para os administradores") {
+		t.Errorf("the refusal was not sent: %s", got)
+	}
+}
+
+func TestBotLogsCommandForAdmin(t *testing.T) {
+	b, api, _, _ := newCommandBot(t, "", 42)
+
+	runCommandText(b, 42, "/logs nautilus-bot 50")
+	if got := api.texts(); !strings.Contains(got, "docker_container_logs container=nautilus-bot tail=50") {
+		t.Errorf("an admin did not get the bot's logs: %s", got)
+	}
+}
+
 func TestCommandSkipsUnregisteredTool(t *testing.T) {
 	b, api, _, _ := newCommandBot(t, "")
 

@@ -112,7 +112,12 @@ Admin only is:
   use, listed in `adminOnlyTools` (`internal/telegram/access.go`): editing a
   film or series, a message on someone's screen, a Jellyfin user's
   preferences, Bazarr's language profiles and providers, adding or changing a
-  Prowlarr indexer.
+  Prowlarr indexer;
+- and one read: `docker_container_logs` for `nautilus-bot`, the bot's own
+  container, whose log names every user, what they asked for and what it cost.
+  The other containers' logs stay open to everyone. The name is fixed
+  (`botContainer` in `internal/telegram/access.go`): a bot whose container is
+  named otherwise must change it there.
 
 Claude still gets **every tool** whoever asks, so the tool list — the start of
 every prompt, and of its cache — is the same bytes for everyone, and a group's
