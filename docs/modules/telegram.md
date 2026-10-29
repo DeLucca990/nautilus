@@ -122,7 +122,7 @@ followed by a note saying whether its sender is an admin, so Claude does not
 offer the rest what they cannot have. Should it call one anyway, the bot
 refuses it **before** calling the server, and Claude gets the refusal as the
 tool's result: no approval appears and nothing is done. The log says
-`user 22222222 → radarr_movie_remove refused: admin only`.
+`user 22222222 (Maria Souza) → radarr_movie_remove refused: admin only`.
 
 The note is a `role: "system"` message appended after the user's own, not
 text inside it. Text in the user's turn is something the user could have
@@ -232,7 +232,7 @@ nothing. Any text after a command that takes none is ignored.
 A command that changes something is no shortcut past the rules for plain
 words: `/restart` is refused, before the server is asked, for anyone not in
 `TELEGRAM_ADMIN_USER_IDS`, and for an admin the server shows its approval as
-it would to Claude. Both are logged the same way: `user 11111111 →
+it would to Claude. Both are logged the same way: `user 11111111 (Ana Lima) →
 docker_container_restart`, or `… refused: admin only`. And it exists only
 where the server registered `docker_container_restart`, which takes
 `NAUTILUS_ALLOW_CONTAINER_NAMES`.
@@ -301,11 +301,13 @@ In the journal, each tool Claude calls is one line, and each question ends with
 one line saying whether it was answered and what it cost:
 
 ```
-user 8683784233 → system_memory_stats
-user 8683784233: answered in 2 steps, $0.0120 ($0.4310 since start)
+user 8683784233 (Ana Lima) → system_memory_stats
+user 8683784233 (Ana Lima): answered in 2 steps, $0.0120 ($0.4310 since start)
 ```
 
-In a group the asker is `user 8683784233 in group -5552970492`. Two notes are
+The asker is their Telegram id and their first and last name (the username
+when the account has no name); in a group, `user 8683784233 (Ana Lima) in
+group -5552970492`. Two notes are
 added to the last line only when they apply: `— answered by claude-opus-4-8`
 when a fallback model answered instead of `TELEGRAM_MODEL`, and `— no price
 for …, not included` for a model the price table does not know. A failed

@@ -345,7 +345,7 @@ func elicit(a *Approvals, ctx context.Context) string {
 
 func TestApprovalAccept(t *testing.T) {
 	a, f := newApprovalHarness("y", 42, time.Second)
-	if got := elicit(a, withRequester(context.Background(), 1, 42, false)); got != "accept" {
+	if got := elicit(a, withRequester(context.Background(), 1, 42, "", false)); got != "accept" {
 		t.Fatalf("got %s", got)
 	}
 	if !strings.Contains(f.sent[0], "Restart &lt;jellyfin&gt;?") {
@@ -358,14 +358,14 @@ func TestApprovalAccept(t *testing.T) {
 
 func TestApprovalDecline(t *testing.T) {
 	a, _ := newApprovalHarness("n", 42, time.Second)
-	if got := elicit(a, withRequester(context.Background(), 1, 42, false)); got != "decline" {
+	if got := elicit(a, withRequester(context.Background(), 1, 42, "", false)); got != "decline" {
 		t.Fatalf("got %s", got)
 	}
 }
 
 func TestApprovalTimesOut(t *testing.T) {
 	a, f := newApprovalHarness("", 42, 20*time.Millisecond)
-	if got := elicit(a, withRequester(context.Background(), 1, 42, false)); got != "cancel" {
+	if got := elicit(a, withRequester(context.Background(), 1, 42, "", false)); got != "cancel" {
 		t.Fatalf("got %s", got)
 	}
 	if !strings.Contains(f.lastEdit(), "Expirou") {
@@ -375,7 +375,7 @@ func TestApprovalTimesOut(t *testing.T) {
 
 func TestApprovalIgnoresAnotherUser(t *testing.T) {
 	a, _ := newApprovalHarness("y", 99, 50*time.Millisecond)
-	if got := elicit(a, withRequester(context.Background(), 1, 42, false)); got != "cancel" {
+	if got := elicit(a, withRequester(context.Background(), 1, 42, "", false)); got != "cancel" {
 		t.Fatalf("another user's press decided it: %s", got)
 	}
 }
@@ -463,7 +463,7 @@ func TestFormatApprovalOtherShapes(t *testing.T) {
 
 func TestApprovalSendsPoster(t *testing.T) {
 	a, f := newApprovalHarness("y", 42, time.Second)
-	res, _ := a.Elicit(withRequester(context.Background(), 1, 42, false),
+	res, _ := a.Elicit(withRequester(context.Background(), 1, 42, "", false),
 		&sdk.ElicitRequest{Params: &sdk.ElicitParams{Message: radarrAdd}})
 	if res.Action != "accept" {
 		t.Fatalf("got %s", res.Action)
@@ -482,7 +482,7 @@ func TestApprovalSendsPoster(t *testing.T) {
 func TestApprovalFallsBackToTextWithoutPoster(t *testing.T) {
 	a, f := newApprovalHarness("y", 42, time.Second)
 	f.noPhoto = true
-	res, _ := a.Elicit(withRequester(context.Background(), 1, 42, false),
+	res, _ := a.Elicit(withRequester(context.Background(), 1, 42, "", false),
 		&sdk.ElicitRequest{Params: &sdk.ElicitParams{Message: radarrAdd}})
 	if res.Action != "accept" || len(f.sent) != 1 {
 		t.Fatalf("got %s after %d messages", res.Action, len(f.sent))

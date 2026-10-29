@@ -172,7 +172,7 @@ func newCommandBot(t *testing.T, press string, admins ...int64) (*Bot, *fakeBotA
 func runCommandText(b *Bot, userID int64, text string) {
 	name, _, rest := parseCommand(text)
 	cmd, _ := findCommand(name)
-	b.runCommand(context.Background(), 1, userID, cmd, rest)
+	b.runCommand(context.Background(), 1, userID, "", cmd, rest)
 }
 
 func TestCommandPassesItsArgument(t *testing.T) {

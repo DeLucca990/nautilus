@@ -81,7 +81,7 @@ func TestAgentRunsApprovedWrite(t *testing.T) {
 	approvals, tg := newApprovalHarness("y", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	answer, used, err := agent.Ask(context.Background(), 1, 42, "reinicia o jellyfin")
+	answer, used, err := agent.Ask(context.Background(), 1, 42, "", "reinicia o jellyfin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestAgentReportsDeclinedWriteToClaude(t *testing.T) {
 	approvals, _ := newApprovalHarness("n", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "reinicia o jellyfin"); err != nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "reinicia o jellyfin"); err != nil {
 		t.Fatal(err)
 	}
 	if mcpServer.writes.Load() != 0 {
@@ -164,7 +164,7 @@ func TestAgentRefusesAdminToolForUser(t *testing.T) {
 	approvals, tg := newApprovalHarness("y", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "remove o dune"); err != nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "remove o dune"); err != nil {
 		t.Fatal(err)
 	}
 	if mcpServer.writes.Load() != 0 || len(tg.sent) != 0 {
@@ -190,7 +190,7 @@ func TestAgentAdminRunsAdminTool(t *testing.T) {
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 	agent.isAdmin = Config{AdminUsers: map[int64]bool{42: true}}.IsAdmin
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "remove o dune"); err != nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "remove o dune"); err != nil {
 		t.Fatal(err)
 	}
 	if mcpServer.writes.Load() != 1 || len(tg.sent) != 1 {
@@ -228,7 +228,7 @@ func TestAgentReadsResource(t *testing.T) {
 	approvals, _ := newApprovalHarness("", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "quais perfis existem?"); err != nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "quais perfis existem?"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -251,7 +251,7 @@ func TestAgentRollsBackFailedTurn(t *testing.T) {
 	approvals, _ := newApprovalHarness("", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	_, used, err := agent.Ask(context.Background(), 1, 42, "como está?")
+	_, used, err := agent.Ask(context.Background(), 1, 42, "", "como está?")
 	if err == nil {
 		t.Fatal("expected the turn to fail")
 	}
@@ -272,8 +272,8 @@ func TestAgentKeepsHistoryAcrossTurns(t *testing.T) {
 	approvals, _ := newApprovalHarness("", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	agent.Ask(context.Background(), 1, 42, "primeira")
-	agent.Ask(context.Background(), 1, 42, "segunda")
+	agent.Ask(context.Background(), 1, 42, "", "primeira")
+	agent.Ask(context.Background(), 1, 42, "", "segunda")
 
 	msgs, _ := claude.requests[1]["messages"].([]any)
 	var roles []string
@@ -329,11 +329,11 @@ func TestAgentPutsAccessInUserTurnWhenSystemRoleRefused(t *testing.T) {
 	approvals, _ := newApprovalHarness("", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	answer, _, err := agent.Ask(context.Background(), 1, 42, "primeira")
+	answer, _, err := agent.Ask(context.Background(), 1, 42, "", "primeira")
 	if err != nil || answer != "um" {
 		t.Fatalf("the refused turn was not retried: %q, %v", answer, err)
 	}
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "segunda"); err != nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "segunda"); err != nil {
 		t.Fatal(err)
 	}
 	if len(claude.requests) != 3 {
@@ -362,7 +362,7 @@ func TestAgentDoesNotRetryOtherBadRequests(t *testing.T) {
 	approvals, _ := newApprovalHarness("", 42, time.Second)
 	agent := newTestAgent(t, claude, mcpServer, approvals)
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "primeira"); err == nil {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "primeira"); err == nil {
 		t.Fatal("expected the turn to fail")
 	}
 	if len(claude.requests) != 1 || agent.accessInUserTurn.Load() {
@@ -419,7 +419,7 @@ func TestAgentBusyWhileTurnInProgress(t *testing.T) {
 	conv.mu.Lock()
 	defer conv.mu.Unlock()
 
-	if _, _, err := agent.Ask(context.Background(), 1, 42, "oi"); err != errBusy {
+	if _, _, err := agent.Ask(context.Background(), 1, 42, "", "oi"); err != errBusy {
 		t.Fatalf("got %v, want errBusy", err)
 	}
 }

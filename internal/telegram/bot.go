@@ -188,7 +188,7 @@ func (b *Bot) onText(ctx context.Context, msg *models.Message) {
 	case "cost":
 		b.sendHTML(ctx, chatID, costReport(b.ledger, time.Now(), msg.From.ID, admin, b.cfg.DailyBudget))
 	case "digest":
-		log.Printf("%s → /digest", who(requester{chatID: chatID, userID: msg.From.ID}))
+		log.Printf("%s → /digest", who(requester{chatID: chatID, userID: msg.From.ID, name: speaker(msg)}))
 		stop := b.typing(ctx, chatID)
 		b.sendDigest(ctx, []int64{chatID}, false)
 		stop()
@@ -198,11 +198,11 @@ func (b *Bot) onText(ctx context.Context, msg *models.Message) {
 			b.sendHTML(ctx, chatID, helpText(b.agent != nil, admin))
 			return
 		}
-		b.runCommand(ctx, chatID, msg.From.ID, cmd, rest)
+		b.runCommand(ctx, chatID, msg.From.ID, speaker(msg), cmd, rest)
 	}
 }
 
-func (b *Bot) runCommand(ctx context.Context, chatID, userID int64, cmd command, rest string) {
+func (b *Bot) runCommand(ctx context.Context, chatID, userID int64, userName string, cmd command, rest string) {
 	var args map[string]any
 	if cmd.args != nil {
 		var err error
@@ -216,7 +216,7 @@ func (b *Bot) runCommand(ctx context.Context, chatID, userID int64, cmd command,
 	defer stop()
 
 	admin := b.cfg.IsAdmin(userID)
-	ctx = withRequester(ctx, chatID, userID, admin)
+	ctx = withRequester(ctx, chatID, userID, userName, admin)
 	r := requesterOf(ctx)
 	ran := 0
 	for _, name := range cmd.tools {
@@ -261,13 +261,13 @@ func (b *Bot) ask(ctx context.Context, chatID, userID int64, name, text string) 
 	}
 	if spent, over := b.budgetSpent(time.Now()); over {
 		log.Printf("%s: refused, the daily budget is spent ($%.4f of $%.2f)",
-			who(requester{chatID: chatID, userID: userID}), spent, b.cfg.DailyBudget)
+			who(requester{chatID: chatID, userID: userID, name: name}), spent, b.cfg.DailyBudget)
 		b.sendHTML(ctx, chatID, budgetMessage(b.cfg.DailyBudget, spent))
 		return
 	}
 
 	stop := b.typing(ctx, chatID)
-	answer, used, err := b.agent.Ask(ctx, chatID, userID, text)
+	answer, used, err := b.agent.Ask(ctx, chatID, userID, name, text)
 	stop()
 	if used.steps > 0 {
 		b.record(entryOf(time.Now(), kindQuestion, chatID, userID, name, used, err != nil))

@@ -140,7 +140,7 @@ func (a *Agent) systemText(ctx context.Context) string {
 // errBusy: an approval can hold a turn open for minutes, and interleaved turns
 // would corrupt the history. The spend is the turn's, failed or not: every
 // step before a failure was billed.
-func (a *Agent) Ask(ctx context.Context, chatID, userID int64, text string) (string, spend, error) {
+func (a *Agent) Ask(ctx context.Context, chatID, userID int64, name, text string) (string, spend, error) {
 	conv := a.conversation(chatID)
 	if !conv.mu.TryLock() {
 		return "", spend{}, errBusy
@@ -150,7 +150,7 @@ func (a *Agent) Ask(ctx context.Context, chatID, userID int64, text string) (str
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 	admin := a.isAdmin(userID)
-	ctx = withRequester(ctx, chatID, userID, admin)
+	ctx = withRequester(ctx, chatID, userID, name, admin)
 
 	var note string
 	switch {
@@ -183,7 +183,7 @@ func (a *Agent) Ask(ctx context.Context, chatID, userID int64, text string) (str
 		conv.messages = append(conv.messages[:start], question...)
 		answer, err = a.loop(ctx, conv, tools, everyone, &turn)
 	}
-	a.logSpend(chatID, userID, turn, err)
+	a.logSpend(requesterOf(ctx), turn, err)
 	if err != nil {
 		conv.messages = conv.messages[:start]
 		return "", turn, err
@@ -215,7 +215,7 @@ func systemRoleRefused(err error) bool {
 		strings.Contains(apiErr.RawJSON(), "role 'system'")
 }
 
-func (a *Agent) logSpend(chatID, userID int64, turn spend, err error) {
+func (a *Agent) logSpend(r requester, turn spend, err error) {
 	a.mu.Lock()
 	a.spent.add(turn)
 	total := a.spent.usd
@@ -231,7 +231,7 @@ func (a *Agent) logSpend(chatID, userID int64, turn spend, err error) {
 	}
 
 	line := fmt.Sprintf("%s: %s in %s, $%.4f ($%.4f since start)",
-		who(requester{chatID: chatID, userID: userID}), outcome, steps, turn.usd, total)
+		who(r), outcome, steps, turn.usd, total)
 	if others := otherThan(turn.models, a.model); len(others) > 0 {
 		line += " — answered by " + strings.Join(others, ", ")
 	}
@@ -242,10 +242,14 @@ func (a *Agent) logSpend(chatID, userID int64, turn spend, err error) {
 }
 
 func who(r requester) string {
-	if r.chatID == r.userID {
-		return fmt.Sprintf("user %d", r.userID)
+	user := fmt.Sprintf("user %d", r.userID)
+	if r.name != "" {
+		user += " (" + r.name + ")"
 	}
-	return fmt.Sprintf("user %d in group %d", r.userID, r.chatID)
+	if r.chatID == r.userID {
+		return user
+	}
+	return fmt.Sprintf("%s in group %d", user, r.chatID)
 }
 
 func otherThan(models []string, model string) []string {

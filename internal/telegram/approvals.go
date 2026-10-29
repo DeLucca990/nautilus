@@ -48,18 +48,19 @@ func (a *Approvals) SetMessenger(tg messenger) { a.tg = tg }
 type requester struct {
 	chatID int64
 	userID int64
+	name   string
 	admin  bool
 }
 
 type requesterKey struct{}
 
-func withRequester(ctx context.Context, chatID, userID int64, admin bool) context.Context {
-	return context.WithValue(ctx, requesterKey{}, requester{chatID: chatID, userID: userID, admin: admin})
+func withRequester(ctx context.Context, chatID, userID int64, name string, admin bool) context.Context {
+	return context.WithValue(ctx, requesterKey{}, requester{chatID: chatID, userID: userID, name: name, admin: admin})
 }
 
 // Anything short of a button press returns "cancel", which the server treats as no.
 func (a *Approvals) Elicit(ctx context.Context, req *sdk.ElicitRequest) (*sdk.ElicitResult, error) {
-	who, ok := ctx.Value(requesterKey{}).(requester)
+	r, ok := ctx.Value(requesterKey{}).(requester)
 	if !ok || a.tg == nil {
 		return &sdk.ElicitResult{Action: "cancel"}, nil
 	}
@@ -72,7 +73,7 @@ func (a *Approvals) Elicit(ctx context.Context, req *sdk.ElicitRequest) (*sdk.El
 		return nil, err
 	}
 
-	p := &pendingApproval{userID: who.userID, decision: make(chan string, 1)}
+	p := &pendingApproval{userID: r.userID, decision: make(chan string, 1)}
 	a.mu.Lock()
 	a.pending[id] = p
 	a.mu.Unlock()
@@ -83,9 +84,9 @@ func (a *Approvals) Elicit(ctx context.Context, req *sdk.ElicitRequest) (*sdk.El
 	}()
 
 	question := formatApproval(req.Params.Message)
-	msg, isPhoto, err := a.ask(ctx, who.chatID, id, question)
+	msg, isPhoto, err := a.ask(ctx, r.chatID, id, question)
 	if err != nil {
-		log.Printf("approval: could not ask chat %d: %v", who.chatID, err)
+		log.Printf("approval: could not ask chat %d: %v", r.chatID, err)
 		return &sdk.ElicitResult{Action: "cancel"}, nil
 	}
 
@@ -99,18 +100,18 @@ func (a *Approvals) Elicit(ctx context.Context, req *sdk.ElicitRequest) (*sdk.El
 		action, outcome = "cancel", "⌛ Cancelado"
 	}
 
-	log.Printf("approval %s for user %d: %s", id, who.userID, action)
+	log.Printf("approval %s for %s: %s", id, who(r), action)
 
 	// WithoutCancel so the buttons are removed even if the request was cancelled.
 	edited := question.html + "\n\n<b>" + outcome + "</b>"
 	bg := context.WithoutCancel(ctx)
 	if isPhoto {
 		_, err = a.tg.EditMessageCaption(bg, &bot.EditMessageCaptionParams{
-			ChatID: who.chatID, MessageID: msg.ID, Caption: edited, ParseMode: models.ParseModeHTML,
+			ChatID: r.chatID, MessageID: msg.ID, Caption: edited, ParseMode: models.ParseModeHTML,
 		})
 	} else {
 		_, err = a.tg.EditMessageText(bg, &bot.EditMessageTextParams{
-			ChatID: who.chatID, MessageID: msg.ID, Text: edited, ParseMode: models.ParseModeHTML,
+			ChatID: r.chatID, MessageID: msg.ID, Text: edited, ParseMode: models.ParseModeHTML,
 		})
 	}
 	if err != nil {

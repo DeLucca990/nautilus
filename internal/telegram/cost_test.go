@@ -103,6 +103,12 @@ func TestWho(t *testing.T) {
 	if got := who(requester{chatID: -5552970492, userID: 42}); got != "user 42 in group -5552970492" {
 		t.Errorf("group: %q", got)
 	}
+	if got := who(requester{chatID: 42, userID: 42, name: "Pedro L"}); got != "user 42 (Pedro L)" {
+		t.Errorf("private, named: %q", got)
+	}
+	if got := who(requester{chatID: -5552970492, userID: 42, name: "Pedro L"}); got != "user 42 (Pedro L) in group -5552970492" {
+		t.Errorf("group, named: %q", got)
+	}
 }
 
 func TestSpendCountsStepsAndModels(t *testing.T) {
